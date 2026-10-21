@@ -1,0 +1,29 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+
+# Electron proctoring captures
+camera_feed/
+cameraFeed/
+
+# System and editor files
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.local
