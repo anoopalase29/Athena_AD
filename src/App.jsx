@@ -6,6 +6,8 @@ function App() {
   const streamRef = useRef(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [cameras, setCameras] = useState([]);
+  const [selectedCameraId, setSelectedCameraId] = useState("");
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -18,24 +20,40 @@ function App() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
-  const requestCameraAccess = async () => {
-    stopCamera();
+  const openCamera = async (deviceId = "") => {
     setCameraError("");
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480 },
+        video: deviceId
+          ? { deviceId: { exact: deviceId }, width: 640, height: 480 }
+          : { width: 640, height: 480 },
         audio: false,
       });
+      const previousStream = streamRef.current;
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraReady(true);
+      previousStream?.getTracks().forEach((track) => track.stop());
+
+      const activeDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId || deviceId;
+      setSelectedCameraId(activeDeviceId);
+      try {
+        const videoDevices = await navigator.mediaDevices.enumerateDevices();
+        setCameras(videoDevices.filter((device) => device.kind === "videoinput"));
+      } catch {
+        setCameras([]);
+      }
     } catch (error) {
-      setCameraError(
-        error.name === "NotAllowedError"
-          ? "Camera permission was denied. Allow access in your browser or system settings and try again."
-          : "The camera could not be opened. Check that it is connected and not in use by another app."
-      );
+      if (streamRef.current) {
+        setCameraError("Could not switch to that camera. Your current camera is still active.");
+      } else {
+        setCameraError(
+          error.name === "NotAllowedError"
+            ? "Camera permission was denied. Allow access in your browser or system settings and try again."
+            : "The camera could not be opened. Check that it is connected and not in use by another app."
+        );
+      }
     }
   };
 
@@ -72,16 +90,34 @@ function App() {
               <button
                 className="button button-primary"
                 type="button"
-                onClick={cameraReady ? stopCamera : requestCameraAccess}
+                onClick={cameraReady ? stopCamera : () => openCamera()}
               >
                 {cameraReady ? "Turn off camera" : "Allow camera access"}
               </button>
               {cameraError && <p className="inline-error" role="alert">{cameraError}</p>}
               {cameraReady && (
+                <>
+                  {cameras.length > 1 && (
+                    <div className="camera-selector">
+                      <label htmlFor="camera-device">Camera device</label>
+                      <select
+                        id="camera-device"
+                        value={selectedCameraId}
+                        onChange={(event) => openCamera(event.target.value)}
+                      >
+                        {cameras.map((camera, index) => (
+                          <option key={camera.deviceId} value={camera.deviceId}>
+                            {camera.label || `Camera ${index + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 <div className="video-frame">
                   <video ref={videoRef} autoPlay playsInline muted />
                   <span className="live-tag"><i /> LIVE PREVIEW</span>
                 </div>
+                </>
               )}
             </div>
           </div>
