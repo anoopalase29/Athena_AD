@@ -53,6 +53,28 @@ button { cursor: pointer; }
 .live-tag { position: absolute; left: 10px; top: 10px; border-radius: 3px; padding: 5px 7px; background: rgba(21,35,27,.78); color: white; font-size: 8px; letter-spacing: .8px; }
 .live-tag i { display: inline-block; width: 6px; height: 6px; background: #69cb8f; border-radius: 50%; margin-right: 5px; }
 .site-footer { border-top: 1px solid var(--line); min-height: 58px; padding: 12px max(6.5vw, 32px); display: flex; justify-content: space-between; align-items: center; gap: 12px; color: #a1a9a3; font-size: 10px; }
+.capture-canvas { display: none; }
+.setup-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 18px; color: #818983; font-size: 11px; }
+.button:disabled { cursor: not-allowed; opacity: .5; transform: none; }
+.exam-session, .result-card { width: min(660px, calc(100% - 40px)); margin: auto; padding: 62px 0; text-align: center; }
+.exam-session h1, .result-card h1 { margin: 0; font: 700 34px Manrope, sans-serif; letter-spacing: -1.1px; }
+.exam-timer { display: grid; gap: 8px; width: min(100%, 360px); margin: 32px auto 20px; padding: 25px; border: 1px solid var(--line); border-radius: 12px; background: white; }
+.exam-timer span, .result-stats span { color: #89928c; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; }
+.exam-timer strong { color: var(--green); font: 700 42px Manrope, sans-serif; font-variant-numeric: tabular-nums; }
+.exam-session-copy, .result-card > p:not(.eyebrow) { color: #747e77; font-size: 13px; line-height: 1.7; }
+.button-secondary { margin-top: 20px; border: 1px solid #dce3dd; background: white; color: var(--ink); }
+.button-secondary:hover { background: #f4f6f4; }
+.result-icon { display: grid; place-items: center; width: 48px; height: 48px; margin: 0 auto 22px; border-radius: 50%; color: var(--green); background: var(--green-pale); font-weight: 700; }
+.result-stats { width: min(100%, 360px); margin: 28px auto; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: white; }
+.result-stats div { display: grid; gap: 7px; }
+.result-stats strong { font: 700 25px Manrope, sans-serif; font-variant-numeric: tabular-nums; }
+.modal-scrim { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: rgba(17, 29, 22, .48); }
+.rules-modal { width: min(100%, 480px); padding: 28px; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: 0 20px 60px rgba(0, 0, 0, .18); }
+.rules-modal h2 { margin: 0; font: 700 22px Manrope, sans-serif; }
+.rules-modal ul { display: grid; gap: 11px; padding-left: 20px; color: #747e77; font-size: 13px; line-height: 1.6; }
+.modal-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 9px; margin-top: 24px; }
+.button-text { background: transparent; color: #58635c; }
+.button-text:hover { background: #f4f6f4; }
 @media (max-width: 600px) {
   .site-header { height: 64px; padding: 0 20px; }
   .header-caption { font-size: 8px; }
@@ -63,4 +85,9 @@ button { cursor: pointer; }
   .step-divider { margin: 0 17px 0 64px; }
   .step-heading h2 { font-size: 14px; }
   .site-footer { padding: 12px 20px; }
+  .setup-footer { align-items: flex-start; flex-direction: column; }
+  .exam-session, .result-card { padding: 45px 0; }
+  .exam-session h1, .result-card h1 { font-size: 28px; }
+  .exam-timer strong { font-size: 36px; }
+  .rules-modal { padding: 22px; }
 }
