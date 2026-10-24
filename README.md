@@ -1,6 +1,6 @@
 # myAthena Camera Check
 
-A small React and Electron app that requests camera permission and displays a live preview. It does not start an assessment or enter fullscreen.
+A small React and Electron app that requests camera permission, displays a live preview, and offers an optional fullscreen mode. When several cameras are available, it remembers the selected camera locally for the next session. It does not start an assessment.
 
 ## Requirements
 

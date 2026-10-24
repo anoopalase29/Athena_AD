@@ -1,13 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
+const CAMERA_PREFERENCE_KEY = "myAthena.preferredCameraId";
+
+function readCameraPreference() {
+  try {
+    const deviceId = window.localStorage.getItem(CAMERA_PREFERENCE_KEY) || "";
+    if (deviceId.length > 512) {
+      window.localStorage.removeItem(CAMERA_PREFERENCE_KEY);
+      return { deviceId: "", message: "A saved camera preference was invalid and has been cleared." };
+    }
+    return { deviceId, message: "" };
+  } catch {
+    return {
+      deviceId: "",
+      message: "Camera preferences are unavailable. Your choice will last for this session only.",
+    };
+  }
+}
+
 function App() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState("");
+  const [fullScreenReady, setFullScreenReady] = useState(Boolean(document.fullscreenElement));
+  const [fullScreenError, setFullScreenError] = useState("");
   const [cameras, setCameras] = useState([]);
   const [selectedCameraId, setSelectedCameraId] = useState("");
+  const [cameraPreference, setCameraPreference] = useState(readCameraPreference);
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -20,24 +41,78 @@ function App() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
   }, []);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!cameraReady || !video || !stream) return undefined;
+
+    video.srcObject = stream;
+    const startPreview = () => {
+      video.play().catch((error) => {
+        console.error("Could not start camera preview:", error);
+        setCameraError("Camera connected, but the preview could not start. Try turning the camera off and on again.");
+      });
+    };
+    video.addEventListener("loadedmetadata", startPreview);
+    if (video.readyState >= 1) startPreview();
+
+    return () => video.removeEventListener("loadedmetadata", startPreview);
+  }, [cameraReady, selectedCameraId]);
+
+  useEffect(() => {
+    const updateFullScreenState = () => {
+      setFullScreenReady(Boolean(document.fullscreenElement));
+      setFullScreenError("");
+    };
+    document.addEventListener("fullscreenchange", updateFullScreenState);
+    return () => document.removeEventListener("fullscreenchange", updateFullScreenState);
+  }, []);
+
+  const saveCameraPreference = (deviceId, message = "") => {
+    try {
+      if (deviceId) {
+        window.localStorage.setItem(CAMERA_PREFERENCE_KEY, deviceId);
+      } else {
+        window.localStorage.removeItem(CAMERA_PREFERENCE_KEY);
+      }
+      setCameraPreference({ deviceId, message });
+    } catch {
+      setCameraPreference({
+        deviceId,
+        message: "Could not save your camera choice. It will reset after restart.",
+      });
+    }
+  };
+
   const openCamera = async (deviceId = "") => {
     setCameraError("");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: deviceId
-          ? { deviceId: { exact: deviceId }, width: 640, height: 480 }
-          : { width: 640, height: 480 },
-        audio: false,
-      });
+      let requestedDeviceId = deviceId || cameraPreference.deviceId;
+      let stream;
+      let preferenceNotice = "";
+      try {
+        stream = await getCameraStream(requestedDeviceId);
+      } catch (error) {
+        const savedCameraMissing = !deviceId
+          && cameraPreference.deviceId
+          && ["NotFoundError", "OverconstrainedError", "DevicesNotFoundError"].includes(error.name);
+        if (!savedCameraMissing) throw error;
+
+        requestedDeviceId = "";
+        preferenceNotice = "Your saved camera is unavailable. Using the default camera instead.";
+        stream = await getCameraStream();
+      }
+
       const previousStream = streamRef.current;
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraReady(true);
       previousStream?.getTracks().forEach((track) => track.stop());
 
-      const activeDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId || deviceId;
+      const activeDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId || requestedDeviceId;
       setSelectedCameraId(activeDeviceId);
+      saveCameraPreference(activeDeviceId, preferenceNotice);
       try {
         const videoDevices = await navigator.mediaDevices.enumerateDevices();
         setCameras(videoDevices.filter((device) => device.kind === "videoinput"));
@@ -57,6 +132,21 @@ function App() {
     }
   };
 
+  const toggleFullScreen = async () => {
+    setFullScreenError("");
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        throw new Error("Fullscreen is not supported by this window.");
+      }
+    } catch (error) {
+      setFullScreenError(error.message || "Could not change full screen mode. Please try again.");
+    }
+  };
+
   return (
     <main className="app-shell">
       <header className="site-header">
@@ -64,14 +154,14 @@ function App() {
           <span className="brand-mark">A</span>
           <span>athena</span>
         </a>
-        <span className="header-caption">CAMERA CHECK</span>
+        <span className="header-caption">DEVICE CHECK</span>
       </header>
 
       <section className="setup-layout" aria-labelledby="setup-title">
         <div className="intro">
-          <p className="eyebrow">CAMERA SETUP</p>
-          <h1 id="setup-title">Check your camera.</h1>
-          <p className="intro-copy">Allow camera access to see a live preview.</p>
+          <p className="eyebrow">DEVICE SETUP</p>
+          <h1 id="setup-title">Get your setup ready.</h1>
+          <p className="intro-copy">Check your camera and choose whether to use full screen.</p>
         </div>
 
         <div className="setup-card">
@@ -94,6 +184,9 @@ function App() {
               >
                 {cameraReady ? "Turn off camera" : "Allow camera access"}
               </button>
+              {cameraPreference.message && (
+                <p className="preference-notice" role="status">{cameraPreference.message}</p>
+              )}
               {cameraError && <p className="inline-error" role="alert">{cameraError}</p>}
               {cameraReady && (
                 <>
@@ -121,6 +214,25 @@ function App() {
               )}
             </div>
           </div>
+          <div className="step-divider" />
+          <div className="step-row">
+            <span className={`step-number ${fullScreenReady ? "step-done" : ""}`}>
+              {fullScreenReady ? "✓" : "02"}
+            </span>
+            <div className="step-copy">
+              <div className="step-heading">
+                <h2>Full screen mode</h2>
+                <span className={`status ${fullScreenReady ? "status-ready" : ""}`}>
+                  {fullScreenReady ? "Enabled" : "Optional"}
+                </span>
+              </div>
+              <p>Expand the app to fill your screen. You can exit full screen at any time.</p>
+              <button className="button button-primary" type="button" onClick={toggleFullScreen}>
+                {fullScreenReady ? "Exit full screen" : "Enable full screen"}
+              </button>
+              {fullScreenError && <p className="inline-error" role="alert">{fullScreenError}</p>}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -130,6 +242,15 @@ function App() {
       </footer>
     </main>
   );
+}
+
+async function getCameraStream(deviceId = "") {
+  return navigator.mediaDevices.getUserMedia({
+    video: deviceId
+      ? { deviceId: { exact: deviceId }, width: 640, height: 480 }
+      : { width: 640, height: 480 },
+    audio: false,
+  });
 }
 
 export default App;
